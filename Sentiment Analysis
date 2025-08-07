@@ -1,29 +1,33 @@
-# Sentiment Analysis
+# 🧠 Sentiment Analysis with Naive Bayes
 
-This file contains the implementation of a sentiment analysis model using natural language processing techniques. It includes data preprocessing, model training, and evaluation metrics.
+A complete NLP pipeline to classify text reviews as **positive** or **negative** using Natural Language Processing and a Naive Bayes classifier.
 
-## Features
-- Data loading and preprocessing
-- Model training using various algorithms
-- Evaluation metrics including accuracy, precision, recall, and F1 score
-
-## Usage
-1. Import the necessary libraries.
-2. Load the dataset.
-3. Train the model.
-4. Evaluate the model's performance.
-
-## Dependencies
-- pandas
+## 🔧 Tech Stack
+- Python
+- NLTK
 - scikit-learn
-- numpy
+- pandas
 - matplotlib
+- CoLab
 
-## Example
-```python
-import pandas as pd
-from sklearn.model_selection import train_test_split
-# Load data
-# Train model
-# Evaluate model
-```
+## 📌 Features
+- Text preprocessing: cleaning, tokenization, stemming, stopword removal
+- Bag-of-Words (BoW) model for vectorization
+- Train/test split
+- Naive Bayes model training
+- Confusion matrix and accuracy evaluation
+- Real-time prediction on single reviews
+
+## 🧪 Process
+
+1. **Text Cleaning** – Removed non-alphabetic characters, converted to lowercase  
+2. **Tokenization & Stemming** – Used NLTK’s `PorterStemmer`  
+3. **Vectorization** – Created a BoW model using `CountVectorizer`  
+4. **Model Training** – Trained a `MultinomialNB` classifier on training data  
+5. **Evaluation** – Used a confusion matrix to assess performance  
+6. **Single Review Prediction** – Applied the same pipeline to individual reviews
+
+## ✅ Results
+- Achieved ~82% accuracy on the test set
+- Predicted unseen review sentiments correctly
+- Modular design enables reuse on other sentiment tasks
