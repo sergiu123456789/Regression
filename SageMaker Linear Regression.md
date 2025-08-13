@@ -33,6 +33,7 @@ from sagemaker import Session
 print(df.head())
 print(df.describe())
 print(df.dtypes)
+
 Expected columns
 
 YearsExperience (numeric)
