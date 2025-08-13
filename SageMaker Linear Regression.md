@@ -1,48 +1,67 @@
-Predict Employee Salary from Years of Experience (sklearn + Amazon SageMaker Linear Learner)
+# Predict Employee Salary from Years of Experience (sklearn + Amazon SageMaker Linear Learner)
 
-1) Prerequisites & Setup
-An AWS account with SageMaker Studio/Notebook access.
+This walkthrough shows an end-to-end workflow: importing libraries, EDA & visualization, train/test split, training & evaluating a **scikit-learn Linear Regression** model, then training, deploying, and testing a **SageMaker Linear Learner** model.
 
-An IAM role with SageMaker + S3 permissions.
+---
 
-A CSV dataset with at least two columns, e.g.:
+## 1) Prerequisites & Setup
 
-YearsExperience (feature)
+- An AWS account with SageMaker Studio/Notebook access.
+- An IAM role with SageMaker + S3 permissions.
+- A CSV dataset with at least two columns:
+  - `YearsExperience` (feature)
+  - `Salary` (label/target)
 
-Salary (label/target)
+**Assumptions:**
+- Local CSV path is `data/salary_data.csv`.
+- Column names are `YearsExperience` and `Salary`.
 
-# Core
-import pandas as pd
+```bash
+# (Optional) Create a project folder
+mkdir -p data
+# Place your dataset at: data/salary_data.csv
+2) Import Libraries
+python
+Copy
+Edit
+import os
 import numpy as np
-
-# Viz
-import seaborn as sns
+import pandas as pd
 import matplotlib.pyplot as plt
 
-# Modeling (sklearn)
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error, accuracy_score
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
 
-# SageMaker
 import sagemaker
-import boto3
-from sagemaker import Session
+from sagemaker import Session, get_execution_role, image_uris
+from sagemaker.serializers import CSVSerializer
+from sagemaker.deserializers import JSONDeserializer
+from sagemaker.estimator import Estimator
+from sagemaker.inputs import TrainingInput
+3) Load Data
+python
+Copy
+Edit
+DATA_LOCAL = "data/salary_data.csv"
+df = pd.read_csv(DATA_LOCAL)
 
-# Quick schema check
 print(df.head())
 print(df.describe())
 print(df.dtypes)
+If needed:
 
-Expected columns
-
-YearsExperience (numeric)
-
-Salary (numeric)
-
+python
+Copy
+Edit
+df = df.rename(columns={"years_of_exp":"YearsExperience", "pay":"Salary"})
 4) Exploratory Data Analysis (EDA) & Visualization
+python
+Copy
+Edit
+assert df["YearsExperience"].notnull().all()
+assert df["Salary"].notnull().all()
 
-# Scatter plot
 plt.figure(figsize=(6,4))
 plt.scatter(df["YearsExperience"], df["Salary"])
 plt.xlabel("Years of Experience")
@@ -50,28 +69,17 @@ plt.ylabel("Salary")
 plt.title("Salary vs Years of Experience")
 plt.show()
 
-# Correlation
-corr = df[["YearsExperience","Salary"]].corr()
-print("Correlation matrix:\n", corr)
-Interpretation:
-
-A strong positive correlation suggests a linear model may fit well.
-
-Look for outliers or obvious non-linear patterns.
-
+print(df[["YearsExperience","Salary"]].corr())
 5) Create Train/Test Splits
 python
 Copy
 Edit
-X = df[["YearsExperience"]].values  # 2D for sklearn
+X = df[["YearsExperience"]].values
 y = df["Salary"].values
 
-# 80/20 split with a fixed seed for reproducibility
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
-
-X_train.shape, X_test.shape
 6) Train a scikit-learn Linear Regression Model
 python
 Copy
@@ -80,83 +88,55 @@ linreg = LinearRegression()
 linreg.fit(X_train, y_train)
 
 print("Intercept:", linreg.intercept_)
-print("Coefficient:", linreg.coef_)  # per year of experience
-7) Evaluate the Trained sklearn Model
+print("Coefficient:", linreg.coef_)
+7) Evaluate the sklearn Model
 python
 Copy
 Edit
 y_pred = linreg.predict(X_test)
 
-r2 = r2_score(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-rmse = np.sqrt(mse)
-mae = mean_absolute_error(y_test, y_pred)
-
-print(f"R^2:  {r2:.4f}")
-print(f"MSE:  {mse:.2f}")
-print(f"RMSE: {rmse:.2f}")
-print(f"MAE:  {mae:.2f}")
-(Optional) Visualize predictions:
+print("R^2:", r2_score(y_test, y_pred))
+print("MSE:", mean_squared_error(y_test, y_pred))
+print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred)))
+print("MAE:", mean_absolute_error(y_test, y_pred))
+Visualization:
 
 python
 Copy
 Edit
-plt.figure(figsize=(6,4))
 plt.scatter(X_test, y_test, label="Actual")
 plt.scatter(X_test, y_pred, marker="x", label="Predicted")
 plt.xlabel("Years of Experience")
 plt.ylabel("Salary")
-plt.title("Actual vs Predicted (sklearn Linear Regression)")
 plt.legend()
 plt.show()
-8) Prepare Data for SageMaker (S3 upload)
-SageMaker’s Linear Learner built-in algorithm accepts CSV where the first column is the label. We’ll create train/validation splits in that format and upload to S3.
-
+8) Prepare Data for SageMaker
 python
 Copy
 Edit
-# Create a copy of splits in label-first CSV format
 train_csv = pd.DataFrame({"Salary": y_train.flatten(), "YearsExperience": X_train.flatten()})
-val_csv   = pd.DataFrame({"Salary": y_test.flatten(),  "YearsExperience": X_test.flatten()})
+val_csv   = pd.DataFrame({"Salary": y_test.flatten(), "YearsExperience": X_test.flatten()})
 
-# Save locally
 os.makedirs("sm_data", exist_ok=True)
-train_path = "sm_data/train.csv"
-val_path   = "sm_data/validation.csv"
+train_csv.to_csv("sm_data/train.csv", index=False, header=False)
+val_csv.to_csv("sm_data/validation.csv", index=False, header=False)
 
-train_csv.to_csv(train_path, index=False, header=False)   # no header for built-ins
-val_csv.to_csv(val_path, index=False, header=False)
-
-# SageMaker session & role
 session = Session()
 region = session.boto_region_name
-try:
-    role = get_execution_role()
-except Exception:
-    # Fallback if running locally: set your role ARN
-    role = "arn:aws:iam::<ACCOUNT_ID>:role/<SageMakerExecutionRole>"
+role = get_execution_role()
 
-# S3 bucket/prefix
 default_bucket = session.default_bucket()
 prefix = "salary-linear-learner"
 
-# Upload to S3
-s3_train = session.upload_data(path=train_path, bucket=default_bucket, key_prefix=f"{prefix}/train")
-s3_val   = session.upload_data(path=val_path,   bucket=default_bucket, key_prefix=f"{prefix}/validation")
-
-print("S3 train:", s3_train)
-print("S3 val:",   s3_val)
-9) Configure and Train SageMaker Linear Learner (Regressor)
+s3_train = session.upload_data(path="sm_data/train.csv", bucket=default_bucket, key_prefix=f"{prefix}/train")
+s3_val   = session.upload_data(path="sm_data/validation.csv", bucket=default_bucket, key_prefix=f"{prefix}/validation")
+9) Train SageMaker Linear Learner
 python
 Copy
 Edit
-# Get the container image for Linear Learner
 image_uri = image_uris.retrieve(framework="linear-learner", region=region)
-
-# Output path for model artifacts
 output_path = f"s3://{default_bucket}/{prefix}/output"
 
-# Estimator
 ll_estimator = Estimator(
     image_uri=image_uri,
     role=role,
@@ -166,117 +146,75 @@ ll_estimator = Estimator(
     sagemaker_session=session,
 )
 
-# Hyperparameters: predictor_type='regressor' for regression problems
 ll_estimator.set_hyperparameters(
-    predictor_type="regressor",   # regression
-    epochs=50,                    # adjust as needed
-    mini_batch_size=32,           # tune based on dataset size
-    loss="squared_loss"           # default for regression
+    predictor_type="regressor",
+    epochs=50,
+    mini_batch_size=32,
+    loss="squared_loss"
 )
 
-# Training inputs (CSV; label must be first column, no header)
-train_input = TrainingInput(
-    s3_data=s3_train,
-    content_type="text/csv"
-)
-val_input = TrainingInput(
-    s3_data=s3_val,
-    content_type="text/csv"
-)
+train_input = TrainingInput(s3_data=s3_train, content_type="text/csv")
+val_input   = TrainingInput(s3_data=s3_val, content_type="text/csv")
 
 ll_estimator.fit({"train": train_input, "validation": val_input})
-Notes
-
-Increase instance_type or epochs for larger datasets.
-
-Consider tuning with SageMaker Automatic Model Tuning for best hyperparameters.
-
-10) Deploy the Trained Linear Learner Model to a Real-Time Endpoint
+10) Deploy Model to Endpoint
 python
 Copy
 Edit
-# Deploy to a managed endpoint
 predictor = ll_estimator.deploy(
     initial_instance_count=1,
     instance_type="ml.m5.large",
-    serializer=CSVSerializer(),          # send CSV rows (no header)
-    deserializer=JSONDeserializer()      # receive JSON predictions
+    serializer=CSVSerializer(),
+    deserializer=JSONDeserializer()
 )
-endpoint_name = predictor.endpoint_name
-print("Endpoint:", endpoint_name)
-11) Invoke the Endpoint (Prediction)
-Send one or multiple examples as a CSV string (no header). Our model expects the same feature order as training (just YearsExperience).
+
+print("Endpoint:", predictor.endpoint_name)
+11) Invoke Endpoint
+Single prediction:
 
 python
 Copy
 Edit
-# Single record prediction (e.g., 5.0 years of experience)
 test_experience = [[5.0]]
 payload_single = "\n".join([",".join(map(str, row)) for row in test_experience])
-
 response_single = predictor.predict(payload_single)
-print("Prediction (single):", response_single)
-Batch a few values:
+print(response_single)
+Batch prediction:
 
 python
 Copy
 Edit
-# Multiple records
 X_new = [[0.5], [2.0], [5.0], [10.0]]
 payload_multi = "\n".join([",".join(map(str, row)) for row in X_new])
-
 response_multi = predictor.predict(payload_multi)
-print("Prediction (batch):", response_multi)
-Interpreting the response
-For Linear Learner regressors, the response typically contains a "predictions" list with "score" values. Example shape:
-
-json
-Copy
-Edit
-{"predictions": [{"score": 40123.1}, {"score": 51234.7}, ...]}
-12) Compare SageMaker vs sklearn Predictions (Optional)
+print(response_multi)
+12) Compare sklearn vs SageMaker
 python
 Copy
 Edit
-# Compare on the same X_test
-# 1) sklearn predictions (already computed as y_pred)
-# 2) SageMaker predictions
 payload_test = "\n".join([",".join(map(str, row)) for row in X_test])
 pred_ll = predictor.predict(payload_test)
-
 sm_scores = np.array([p["score"] for p in pred_ll["predictions"]])
 
-r2_sm  = r2_score(y_test, sm_scores)
-mse_sm = mean_squared_error(y_test, sm_scores)
-rmse_sm = np.sqrt(mse_sm)
-mae_sm = mean_absolute_error(y_test, sm_scores)
-
-print(f"SageMaker Linear Learner — R^2: {r2_sm:.4f}, RMSE: {rmse_sm:.2f}, MAE: {mae_sm:.2f}")
-print(f"sklearn Linear Regression — R^2: {r2:.4f}, RMSE: {rmse:.2f}, MAE: {mae:.2f}")
-13) (Important) Endpoint Cleanup
-Real-time endpoints incur cost while running. Delete when done:
-
+print("SageMaker R^2:", r2_score(y_test, sm_scores))
+print("sklearn R^2:", r2_score(y_test, y_pred))
+13) Cleanup
 python
 Copy
 Edit
-# Delete endpoint + config to stop charges
 session.delete_endpoint(predictor.endpoint_name)
 session.delete_endpoint_config(predictor.endpoint_name)
-14) Tips & Troubleshooting
-Data format: For Linear Learner with CSV, ensure label is first and no header.
+14) Tips
+Label must be the first column in CSV for SageMaker built-in algorithms.
 
-Scaling: Linear models generally don’t require scaling for a single feature, but if you expand features, consider normalization.
+Remove CSV headers for training.
 
-Outliers: Large outliers in salary can skew linear fits—consider robust regression or log-transforming the target if appropriate.
+Always delete endpoints when finished to avoid costs.
 
-Model choice: If the relationship is not linear, try polynomial features (sklearn PolynomialFeatures) or tree-based models (XGBoost on SageMaker).
+Consider hyperparameter tuning for best results.
 
-Permissions: If get_execution_role() fails locally, provide a valid IAM role ARN with SageMaker & S3 permissions.
-
-Costs: Prefer smaller instance types (ml.t2.medium/ml.m5.large) for demos; scale up for production.
-
-15) Minimal CSV Example (for quick testing)
-Save as data/salary_data.csv:
+15) Sample Dataset
+data/salary_data.csv:
 
 csv
 Copy
@@ -292,5 +230,6 @@ YearsExperience,Salary
 8,90000
 9,95000
 10,110000
-Then re-run the steps above.
-
+pgsql
+Copy
+Edit
