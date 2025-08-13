@@ -129,8 +129,7 @@ linear.fit({'train': s3_train_data})
 ```python
 linear_regressor = linear.deploy(initial_instance_count = 1,
                                           instance_type = 'ml.m4.xlarge')
-
----
+```
 
 ## 11) Invoke Endpoint
 
