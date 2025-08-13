@@ -97,8 +97,7 @@ bucket = Session().default_bucket()
 prefix = 'linear_learner'
 
 role = sagemaker.get_execution_role()
-
----
+```
 
 ## 9) Train SageMaker Linear Learner
 
