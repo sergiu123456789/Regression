@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
+```
 
 ### 2. Importing the Dataset
 
@@ -24,29 +25,30 @@ from sklearn.preprocessing import OneHotEncoder
 dataset = pd.read_csv('50_Startups.csv')
 X = dataset.iloc[:, :-1].values  # All columns except the last (features)
 y = dataset.iloc[:, -1].values   # Last column (target: Profit)
-
+```
 ### 3. Encoding Categorical Data (State column)
-
+```python
 ct = ColumnTransformer(transformers=[('encoder', OneHotEncoder(), [3])], remainder='passthrough')
 X = ct.fit_transform(X)
-
+```
 ### 4. Splitting the Data into Training and Test Sets
-
+```python
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-
+```
 ### 5. Training the Multiple Linear Regression Model
-
+```python
 regressor = LinearRegression()
 regressor.fit(X_train, y_train)
-
+```
 ### 6. Predicting the Test Set Results
-
+```python
 y_pred = regressor.predict(X_test)
-
+```
 # Compare predictions and actual values
+```python
 np.set_printoptions(precision=2)
 print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),1)),1))
-
+```
 ### 7. Making a Single Prediction
 
 ```python
@@ -56,7 +58,7 @@ print(np.concatenate((y_pred.reshape(len(y_pred),1), y_test.reshape(len(y_test),
 new_data = [[0, 0, 1, 160000, 130000, 300000]]
 prediction = regressor.predict(new_data)
 print(f"Predicted Profit: ${prediction[0]:,.2f}")
-
+```
 ### 8. Getting the Final Regression Equation
 
 ```python
@@ -68,7 +70,7 @@ equation = f"y = {b0:.2f}"
 for i, b in enumerate(coefficients):
     equation += f" + ({b:.2f})*x{i+1}"
 print(equation)
-
+```
 ## ✅ Summary
 
 - Train a multiple linear regression model
