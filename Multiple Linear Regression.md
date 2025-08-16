@@ -1,5 +1,12 @@
 # 📊 Multiple Linear Regression: Predict the profit of certain state companies based on their spendings
 
+## 🧩 Problem Statement
+
+The **HR department** is evaluating a job applicant who claims to have earned a certain **salary** at their previous company. To determine if this expectation is **reasonable**, HR wants to use a data-driven method to predict expected salary based on:
+
+- **Position Level**
+- **Years of Experience**
+
 ### 1. Importing Libraries
 
 ```python
