@@ -1,12 +1,12 @@
 # 🎓 Linear Regression prediction of salary of an employee
 
 **Linear Regression** is one of the most commonly used statistical modeling methods in data science.
-🧩 Problem Statement
-The HR department is evaluating a job applicant who claims to have earned a certain salary at their previous company. To determine if this expectation is reasonable, HR wants to use a data-driven method to predict expected salary based on:
+## 🧩 Problem Statement
 
-Position Level
-Years of Experience
-Using Random Forest Regression, HR can compare the candidate's claimed salary with industry trends for similar roles and experience levels.
+The **HR department** is evaluating a job applicant who claims to have earned a certain **salary** at their previous company. To determine if this expectation is **reasonable**, HR wants to use a data-driven method to predict expected salary based on:
+
+- **Position Level**
+- **Years of Experience**
 
 ### ✅ 1. Importing Libraries and Dataset
 
