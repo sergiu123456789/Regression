@@ -156,8 +156,6 @@ linear_regressor.delete_endpoint()
 
 ## 14) Tips
 
-- Label must be the first column in CSV for SageMaker built-in algorithms.
-- Remove CSV headers for training.
 - Always delete endpoints when finished to avoid costs.
 - Consider hyperparameter tuning for best results.
 
